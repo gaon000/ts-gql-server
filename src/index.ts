@@ -4,6 +4,7 @@ import { createConnection, getConnection } from "typeorm";
 import { ResolverMap } from "./types/ResolverType";
 import { User } from "./entity/User";
 
+//graphql schema
 const typeDefs = `
   type User {
     id: Int!
