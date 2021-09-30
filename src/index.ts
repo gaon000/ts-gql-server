@@ -3,15 +3,18 @@ import { GraphQLServer } from "graphql-yoga";
 import { createConnection, getConnection } from "typeorm";
 import { ResolverMap } from "./types/ResolverType";
 import { User } from "./entity/User";
+import { Profile } from "./entity/Profile";
 
 //graphql schema
 const typeDefs = `
   type User {
     id: Int!
     firstName: String!
-    lastName: String!
-    age: Int!
-    email: String!
+    profile: Profile!
+  }
+
+  type Profile {
+    favoriteColor: String!
   }
 
   type Query {
@@ -20,9 +23,13 @@ const typeDefs = `
     users: [User!]!
   }
 
+  input ProfileInput {
+    favoriteColor: String!
+  }
+
   type Mutation {
-    createUser(firstName: String, lastName: String!, age: Int, email: String!): User!
-    updateUser(id: Int!, firstName: String, lastName: String, age: Int, email: String): Boolean
+    createUser(firstName: String!, profile: ProfileInput): User!
+    updateUser(id: Int!, firstName: String): Boolean
     deleteUser(id: Int!): Boolean
   }
 `;
@@ -30,13 +37,33 @@ const typeDefs = `
 const resolvers: ResolverMap = {
   Query: {
     hello: (_: any, { name }: any) => `hhello ${name || "World"}`,
-    user: (_, { id }) => User.findOne(id),
-    users: () => User.find(),
+    user: async (_, { id }) => {
+      const user = await User.findOne(id, { relations: ["profile"] });
+      console.log(user);
+
+      return user;
+    },
+    users: async () => {
+      const user = await User.find({ relations: ["profile"] });
+      return user;
+    }
   },
   Mutation: {
     createUser: async (_, args) => {
-      const user = User.create(args);
+      const profile = new Profile();
+      profile.favoriteColor = args.profile.favoriteColor;
+      await Profile.save(profile);
+      const user = User.create({
+        firstName: args.firstName,
+        profileId: profile.id 
+      });
+
+      user.profile = profile;
+
       await User.save(user);
+
+      console.log(user);
+
       return user;
     },
     updateUser: async (_, {id,  ...args}) => {
